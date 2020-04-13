@@ -4,10 +4,15 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Tests.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Parsing\Uri.fs" />
+    <Compile Include="Parsing\Message.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FsHttp.Core\FsHttp.Core.fsproj" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
