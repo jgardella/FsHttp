@@ -31,7 +31,7 @@ Accept-Language: en, mi
             Body = None
         }
 
-    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
+    Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully parses valid POST request`` () =
@@ -60,7 +60,7 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some (RequestBody.ParsedBody (Encoding.UTF8.GetBytes "abcdefghijklmnopqrstuvwxyz"))
         }
 
-    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
+    Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully detects invalid Content-Length header`` () =
@@ -89,7 +89,7 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some RequestBody.InvalidContentLength
         }
 
-    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
+    Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully detects multiple Content-Length headers`` () =
@@ -120,4 +120,4 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some RequestBody.InvalidContentLength
         }
 
-    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
+    Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)

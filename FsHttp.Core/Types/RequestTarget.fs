@@ -26,13 +26,39 @@ module private Parsing =
         |> skipped
         |> attempt
 
+    let phost =
+        choice [
+            pipliteral
+            pipv4address
+            pregname
+        ]
+        |>> ignore
+        |> skipped
+        |> attempt
+
+    let pauthority =
+        optional (puserinfo .>>? pstring "@")
+        >>? phost
+        >>? opt (pstring ":" >>. many1Chars digit)
+        |>> ignore
+        |> skipped
+        |> attempt
+
     let phierpart =
         choice [
-            pstring "//" >>. Authority.Parser >>? ppathabempty
+            pstring "//" >>. pauthority >>? ppathabempty
             ppathabsolute
             ppathrootless
             ppathempty
         ]
+        |>> ignore
+        |> skipped
+        |> attempt
+
+    let pabsolute =
+        (pscheme .>> pstring ":")
+        >>? phierpart
+        >>? optional (pstring "?" >>. pquery)
         |>> ignore
         |> skipped
         |> attempt
@@ -50,35 +76,27 @@ type OriginTarget = {
                 Query = query
             }
 
-type AbsoluteTarget = {
-    Scheme : string
-    HierPart : string
-    Query : string option
-} with
+type Host = Host of string
+with
     static member Parser =
-        pipe3
-            <| (pscheme .>> pstring ":")
-            <| Parsing.phierpart
-            <| opt (pstring "?" >>. pquery)
-            <| fun scheme hierPart query ->
-                {
-                    AbsoluteTarget.Scheme = scheme
-                    HierPart = hierPart
-                    Query = query
-                }
+        Parsing.phost >>? opt (pchar ':' >>? manyChars digit)
+        |>> ignore
+        |> skipped
+        |> attempt
+        |>> (fun s -> if s = "" then None else Some (Host s))
 
 /// The target resource upn which to apply the request.
 /// See <see href="https://tools.ietf.org/html/rfc7230#section-5.3">RFC7230 Section 5.3</see>.
 type RequestTarget =
     | Origin of OriginTarget
-    | Absolute of AbsoluteTarget
-    | Authority of Authority
+    | Absolute of string
+    | Authority of string
     | Asterisk
 with
     static member Parser =
         choice [
             attempt (pstring "*" >>% Asterisk)
             attempt OriginTarget.Parser |>> Origin
-            attempt Authority.Parser |>> Authority
-            attempt AbsoluteTarget.Parser |>> Absolute
+            attempt Parsing.pauthority |>> Authority
+            attempt Parsing.pabsolute |>> Absolute
         ]

@@ -5,6 +5,7 @@
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
     <OutputType>Library</OutputType>
+    <AssemblyVersion></AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Helpers.fs" />

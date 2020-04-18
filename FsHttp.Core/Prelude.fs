@@ -76,7 +76,7 @@ module FParsec =
     /// The Error case of the returned value will contains the provided error string, appended
     /// with details about the parse error.
     let runWithError (p : Parser<_, _>) (error : string) (input : string) =
-        match run p input with
+        match run (p .>> eof) input with
         | ParserResult.Success (result, _, _) -> Result.Ok result
         | ParserResult.Failure (errorDetails, _, _) -> Result.Error (sprintf "%s: %s" error errorDetails)
 
