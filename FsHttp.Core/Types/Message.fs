@@ -1,59 +1,42 @@
 module FsHttp.Core.Types.Message
 
-/// An HTTP Method.
-/// See <see href="https://tools.ietf.org/html/rfc7231#section-4">RFC7231 Section 4</see>.
-type RequestMethod =
-    | GET
-    | HEAD
-    | POST
-    | PUT
-    | DELETE
-    | CONNECT
-    | OPTIONS
-    | TRACE
+open FsHttp.Core.Types
 
-type OriginTarget = {
-    Path : string
-    Query : string option
-}
+type RequestError =
+    | BadRequest of string
 
-type AbsoluteTarget = {
-    Scheme : string
-    HierPart : string
-    Query : string option
-}
+/// Tries to get exactly one header with the provided header.
+let internal tryExactlyOneHeader (targetHeader : string) (headers : seq<string * string>) =
+    headers
+    |> Seq.where (fst >> ((=) targetHeader))
+    |> Seq.tryExactlyOne
+    |> Option.map snd
 
-/// The target resource upn which to apply the request.
-/// See <see href="https://tools.ietf.org/html/rfc7230#section-5.3">RFC7230 Section 5.3</see>.
-type RequestTarget =
-    | Origin of OriginTarget
-    | Absolute of AbsoluteTarget
-    | Authority of Uri.Authority
-    | Asterisk
+/// There must be exactly one 'Host' header with a properly formatted value.
+let internal tryGetHost (headers : seq<string * string>) =
+    tryExactlyOneHeader "Host" headers
+    |> Result.ofOptionf "Expect exactly one 'Host' header."
+    |> Result.bind (FParsec.runWithError Host.Parser "Invalid format for 'Host' header")
+    |> Result.mapError RequestError.BadRequest
 
-type HttpVersion = {
-    MajorVersion : int
-    MinorVersion : int
-}
+/// Request target must be properly formatted.
+let internal tryGetRequestTarget (target : string) =
+    FParsec.runWithError RequestTarget.Parser "Invalid request target" target
+    |> Result.mapError RequestError.BadRequest
 
-type RequestLine = {
-    Method : RequestMethod
-    Target : RequestTarget
-    HttpVersion : HttpVersion
-}
+/// An HTTP Request message which has been fully validated.
+type RequestMessage = private {
+    Host : Host
+    RequestTarget : RequestTarget
+} with
+    /// Tries to create a request message from a DTO.
+    /// Returns Error if the request described by the DTO is not valid.
+    static member TryOfDto (dto : Dto.Message.RequestMessage) = result {
+        let! host = tryGetHost dto.Headers
+        let! requestTarget = tryGetRequestTarget dto.RequestLine.Target
+        return {
+            RequestMessage.Host = host
+            RequestTarget = requestTarget
+        }
+    }
 
-type StatusLine = {
-    StatusCode : int
-    ReasonPhrase : string
-}
-
-type RequestBody =
-    | ParsedBody of byte []
-    | UnknownLength
-    | InvalidContentLength
-
-type RequestMessage = {
-    RequestLine : RequestLine
-    Headers : Map<string, string>
-    Body : RequestBody option
-}

@@ -9,5 +9,3 @@ module Assert =
         match actual with
         | ParserResult.Success (result, _, _) -> Assert.Equal<'a>(expected, result)
         | ParserResult.Failure (err, _, _) -> Assert.True(false, sprintf "Parse failed, %s" err)
-
-

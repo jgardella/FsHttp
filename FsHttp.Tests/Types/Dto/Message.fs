@@ -1,19 +1,10 @@
-module FsHttp.Tests.Parsing.Message
+module FsHttp.Tests.Types.Dto.Message
 
 open System.Text
-open Xunit
 open FParsec
-open FsHttp.Core.Parsing
-open FsHttp.Core.Types.Message
-open FsHttp.Core.Types.Uri
+open Xunit
 open FsHttp.Tests.Helpers
-
-module AbsoluteTarget =
-    [<Fact>]
-    let ``successfully parses valid absolute target`` () =
-        let input = "http://example.com/hello.txt?foo=bar"
-        let expected = { AbsoluteTarget.Scheme = "http"; HierPart = "//example.com/hello.txt"; Query = Some "foo=bar" }
-        Assert.ParseSuccess(expected, run Message.pabsolutetarget input)
+open FsHttp.Core.Types.Dto.Message
 
 [<Fact>]
 let ``successfully parses valid GET request`` () =
@@ -28,11 +19,11 @@ Accept-Language: en, mi
         {
             RequestMessage.RequestLine = {
                 RequestLine.Method = RequestMethod.GET
-                Target = RequestTarget.Origin { OriginTarget.Path = "/hello.txt"; Query = Some "foo=bar" }
+                Target = "/hello.txt?foo=bar"
                 HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
             }
             Headers =
-                Map.ofList [
+                [
                     ("User-Agent", "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")
                     ("Host",  "www.example.com")
                     ("Accept-Language", "en, mi")
@@ -40,64 +31,7 @@ Accept-Language: en, mi
             Body = None
         }
 
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
-
-[<Fact>]
-let ``successfully parses valid absolute GET request`` () =
-    let input = """GET http://example.com/hello.txt?foo=bar HTTP/1.1
-
-"""
-
-    let expected =
-        {
-            RequestMessage.RequestLine = {
-                RequestLine.Method = RequestMethod.GET
-                Target = RequestTarget.Absolute { AbsoluteTarget.Scheme = "http"; HierPart = "//example.com/hello.txt"; Query = Some "foo=bar" }
-                HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
-            }
-            Headers = Map.empty
-            Body = None
-        }
-
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
-
-[<Fact>]
-let ``successfully parses valid asterisk GET request`` () =
-    let input = """GET * HTTP/1.1
-
-"""
-
-    let expected =
-        {
-            RequestMessage.RequestLine = {
-                RequestLine.Method = RequestMethod.GET
-                Target = RequestTarget.Asterisk
-                HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
-            }
-            Headers = Map.empty
-            Body = None
-        }
-
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
-
-[<Fact>]
-let ``successfully parses valid authority GET request`` () =
-    let input = """GET www.example.com:80 HTTP/1.1
-
-"""
-
-    let expected =
-        {
-            RequestMessage.RequestLine = {
-                RequestLine.Method = RequestMethod.GET
-                Target = RequestTarget.Authority { Authority.UserInfo = None; Host = "www.example.com"; Port = Some 80 }
-                HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
-            }
-            Headers = Map.empty
-            Body = None
-        }
-
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
+    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully parses valid POST request`` () =
@@ -113,11 +47,11 @@ abcdefghijklmnopqrstuvwxyz"""
         {
             RequestMessage.RequestLine = {
                 RequestLine.Method = RequestMethod.POST
-                Target = RequestTarget.Origin { OriginTarget.Path = "/hello.txt"; Query = None }
+                Target = "/hello.txt"
                 HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
             }
             Headers =
-                Map.ofList [
+                [
                     ("User-Agent", "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")
                     ("Host",  "www.example.com")
                     ("Accept-Language", "en, mi")
@@ -126,7 +60,7 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some (RequestBody.ParsedBody (Encoding.UTF8.GetBytes "abcdefghijklmnopqrstuvwxyz"))
         }
 
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
+    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully detects invalid Content-Length header`` () =
@@ -142,11 +76,11 @@ abcdefghijklmnopqrstuvwxyz"""
         {
             RequestMessage.RequestLine = {
                 RequestLine.Method = RequestMethod.POST
-                Target = RequestTarget.Origin { OriginTarget.Path = "/hello.txt"; Query = None }
+                Target = "/hello.txt"
                 HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
             }
             Headers =
-                Map.ofList [
+                [
                     ("User-Agent", "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")
                     ("Host",  "www.example.com")
                     ("Accept-Language", "en, mi")
@@ -155,7 +89,7 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some RequestBody.InvalidContentLength
         }
 
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
+    Assert.ParseSuccess(expected, run RequestMessage.Parser input)
 
 [<Fact>]
 let ``successfully detects multiple Content-Length headers`` () =
@@ -172,11 +106,11 @@ abcdefghijklmnopqrstuvwxyz"""
         {
             RequestMessage.RequestLine = {
                 RequestLine.Method = RequestMethod.POST
-                Target = RequestTarget.Origin { OriginTarget.Path = "/hello.txt"; Query = None }
+                Target = "/hello.txt"
                 HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
             }
             Headers =
-                Map.ofList [
+                [
                     ("User-Agent", "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")
                     ("Host",  "www.example.com")
                     ("Accept-Language", "en, mi")
@@ -186,4 +120,4 @@ abcdefghijklmnopqrstuvwxyz"""
             Body = Some RequestBody.InvalidContentLength
         }
 
-    Assert.ParseSuccess(expected, run Message.prequestmessage input)
+    Assert.ParseSuccess(expected, run RequestMessage.Parser input)

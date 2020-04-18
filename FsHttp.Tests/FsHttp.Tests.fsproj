@@ -8,8 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Helpers.fs" />
-    <Compile Include="Parsing\Uri.fs" />
-    <Compile Include="Parsing\Message.fs" />
+    <Compile Include="Types\Dto\Message.fs" />
+    <Compile Include="Types\Message.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FsHttp.Core\FsHttp.Core.fsproj" />

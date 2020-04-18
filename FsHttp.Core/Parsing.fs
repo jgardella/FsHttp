@@ -1,11 +1,8 @@
-module FsHttp.Core.Parsing.Uri
+module FsHttp.Core.Parsing
 
-open System
 open FParsec
-open FsHttp.Core.Parsing.General
-open FsHttp.Core.Types.Uri
 
-let private punreserved : Parser<string> =
+let punreserved : Parser<string> =
     choice [
         letter
         digit
@@ -15,13 +12,13 @@ let private punreserved : Parser<string> =
         pchar '~'
     ] |>> string
 
-let private ppctencoded =
+let ppctencoded =
     (pchar '%' >>. hex >>. hex)
     |>> ignore
     |> skipped
     |> attempt
 
-let private psubdelims =
+let psubdelims =
     choice [
         pchar '!'
         pchar '$'
@@ -36,7 +33,7 @@ let private psubdelims =
         pchar '='
     ] |>> string
 
-let private ppchar =
+let ppchar =
     choice [
         punreserved |>> string
         ppctencoded
@@ -45,15 +42,15 @@ let private ppchar =
         pstring "@"
     ]
 
+let psegment = manyStrings ppchar
+
+let psegmentnz = many1Strings ppchar
+
 let pscheme : Parser<string> =
     many1Chars2 letter (letter <|> anyOf ['+';'-';'.'])
     |>> ignore
     |> skipped
     |> attempt
-
-let private psegment = manyStrings ppchar
-
-let private psegmentnz = many1Strings ppchar
 
 let pquery : Parser<string> =
     manyStrings (choice [
@@ -67,7 +64,7 @@ let pabsolutepath : Parser<string> =
     |> skipped
     |> attempt
 
-let private puserinfo : Parser<string> =
+let puserinfo : Parser<string> =
     manyStrings (choice [
         punreserved
         ppctencoded
@@ -75,20 +72,20 @@ let private puserinfo : Parser<string> =
         pstring ":"
     ])
 
-let private pregname =
+let pregname =
     manyStrings (choice [
         punreserved
         ppctencoded
         psubdelims
     ])
 
-let private pipvfuture =
+let pipvfuture =
     pstring "v" .>> many1 hex .>> pstring "." .>> many1 (punreserved <|> psubdelims <|> pstring ":")
     |>> ignore
     |> skipped
     |> attempt
 
-let private pdecoctet =
+let pdecoctet =
     choice [
         anyOf ['1'; '2'; '3'; '4'; '5'; '6'; '7'; '8'; '9'] >>. digit
         pstring "1" >>. digit >>. digit
@@ -96,10 +93,10 @@ let private pdecoctet =
         pstring "25" >>. anyOf ['0'; '1'; '2'; '3'; '4'; '5']
     ] |>> ignore |> skipped |> attempt
 
-let private pipv4address =
+let pipv4address =
     pdecoctet .>> pstring "." .>> pdecoctet .>> pstring "." .>> pdecoctet .>> pstring "." .>> pdecoctet
 
-let private ph16 : Parser<string> =
+let ph16 : Parser<string> =
     choice [
         hex |>> ignore
         skipArray 2 hex
@@ -107,17 +104,13 @@ let private ph16 : Parser<string> =
         skipArray 4 hex
     ] |> skipped |> attempt
 
-let private pls32 =
+let pls32 =
     choice [
         ph16 >>. pstring ":" >>. ph16
         pipv4address
     ] |>> ignore |> skipped |> attempt
 
-let private pupto n p =
-    many p
-    >>= fun x -> if x.Length <= n then preturn x else fail (sprintf "pupto expected %d" n)
-
-let private pipv6address =
+let pipv6address =
     choice [
         skipArray 6 (ph16 >>. pstring ":") >>. pls32
         pstring "::" >>. skipArray 5 (ph16 >>. pstring ":") >>. pls32
@@ -130,58 +123,29 @@ let private pipv6address =
         pupto 6 (ph16 >>. pstring ":") >>. ph16 >>. pstring "::"
     ]
 
-let private pipliteral =
+let pipliteral =
     pstring "[" >>. (pipv6address <|> pipvfuture) .>> pstring "]"
     |>> ignore
     |> skipped
     |> attempt
 
-let private phost : Parser<string> =
+let ptchar : Parser<char> =
     choice [
-        pipliteral
-        pipv4address
-        pregname
+        pchar '!'
+        pchar '#'
+        pchar '$'
+        pchar '%'
+        pchar '&'
+        pchar '''
+        pchar '*'
+        pchar '+'
+        pchar '-'
+        pchar '.'
+        pchar '^'
+        pchar '_'
+        pchar '`'
+        pchar '|'
+        pchar '~'
+        digit
+        asciiLetter
     ]
-
-let pauthority =
-    pipe3
-        <| opt (puserinfo .>>? pstring "@")
-        <| phost
-        <| opt (pstring ":" >>. many1Chars digit)
-        <| fun userInfo host port -> {
-            Authority.UserInfo = userInfo
-            Host = host
-            Port = port |> Option.map Int32.Parse
-        }
-
-let private ppathabempty =
-    skipMany (pstring "/" >>. psegment)
-    |> skipped
-    |> attempt
-
-let private ppathabsolute =
-    pstring "/" >>. optional (psegmentnz >>. skipMany (pstring "/" >>. psegment))
-    |> skipped
-    |> attempt
-
-let private ppathrootless =
-    many1Strings2 psegmentnz (pstring "/" >>. psegment |>> ((+) "/"))
-    |>> ignore
-    |> skipped
-    |> attempt
-
-let private ppathempty =
-    optional (pstring "<" >>. ppchar .>> pstring ">")
-    |> skipped
-    |> attempt
-
-let phierpart =
-    choice [
-        pstring "//" >>. pauthority >>? ppathabempty
-        ppathabsolute
-        ppathrootless
-        ppathempty
-    ]
-    |>> ignore
-    |> skipped
-    |> attempt
