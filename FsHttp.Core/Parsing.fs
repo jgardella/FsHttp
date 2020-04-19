@@ -159,3 +159,5 @@ let pws : Parser<char> =
 let pows : Parser<string> =
     manyChars pws
 
+let pcsl (p : Parser<_>) =
+    sepBy1 p (pows >>? pchar ',' >>? pows)

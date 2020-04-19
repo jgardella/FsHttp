@@ -49,10 +49,36 @@ let internal tryGetConnection (headers : seq<string * string>) = result {
     | Some connection ->
         let! connectionHeader =
             connection
-            |> FParsec.runWithError (sepBy1 Parsing.ptoken (Parsing.pows >>? pchar ',' >>? Parsing.pows)) "Invalid format for 'Connection' header"
+            |> FParsec.runWithError (Parsing.pcsl Parsing.ptoken) "Invalid format for 'Connection' header"
         match connectionHeader with
         | ["close"] -> return Some Connection.Close
         | headers -> return Some (Connection.Headers headers)
+    | None ->
+        return None
+}
+
+type Upgrade = {
+    ProtocolName : string
+    ProtocolVersion : string option
+} with
+    static member Parser =
+        pipe2
+            Parsing.ptoken
+            (opt (pchar '/' >>. Parsing.ptoken))
+            (fun protocolName protocolVersion -> {
+                Upgrade.ProtocolName = protocolName
+                ProtocolVersion = protocolVersion
+            })
+
+/// There may be one 'Upgrade' header with a properly formatted value.
+/// See <see href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 Section 6.7</see>.
+let internal tryGetUpgrade (headers : seq<string * string>) = result {
+    match! tryOneOrNoHeader "Upgrade" headers with
+    | Some upgrade ->
+        return!
+            upgrade
+            |> FParsec.runWithError (Parsing.pcsl Upgrade.Parser) "Invalid format for 'Upgrade' header"
+            |> Result.map Some
     | None ->
         return None
 }

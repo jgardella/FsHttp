@@ -108,6 +108,7 @@ module RequestMessage =
             RequestTarget = RequestTarget.Absolute "http://www.example.com:80"
             EffectiveRequestUri = UriBuilder("http", "www.example.com", 80).Uri
             Connection = Some Header.Connection.Close
+            Upgrade = None
         }
         let result = Message.RequestMessage.TryOfDto serverConfig false 80 dto
         Assert.OkEqual(expected, result)

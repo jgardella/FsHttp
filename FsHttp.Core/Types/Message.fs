@@ -64,6 +64,7 @@ type RequestMessage = {
     RequestTarget : RequestTarget
     EffectiveRequestUri : Uri
     Connection : Header.Connection option
+    Upgrade : Header.Upgrade list option
 } with
     /// Tries to create a request message from a DTO.
     /// Returns Error if the request described by the DTO is not valid.
@@ -72,11 +73,13 @@ type RequestMessage = {
         let! requestTarget = tryGetRequestTarget dto.RequestLine.Target
         let effectiveRequestUri = getEffectiveRequestUri serverConfig.FixedScheme isSecureConnection serverConfig.FixedAuthority serverConfig.DefaultAuthority host tcpPort requestTarget
         let! connection = Header.tryGetConnection dto.Headers
+        let! upgrade = Header.tryGetUpgrade dto.Headers
         return {
             RequestMessage.Host = host
             RequestTarget = requestTarget
             EffectiveRequestUri = effectiveRequestUri
             Connection = connection
+            Upgrade = upgrade
         }
     }
 
