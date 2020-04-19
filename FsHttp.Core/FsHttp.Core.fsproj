@@ -4,13 +4,14 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Prelude.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Types\Dto\Message.fs" />
     <Compile Include="Types\RequestTarget.fs" />
     <Compile Include="Types\Header.fs" />
     <Compile Include="Types\Message.fs" />
-    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Server.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
