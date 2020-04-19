@@ -33,38 +33,6 @@ module RequestTarget =
         let expected = RequestTarget.Origin { OriginTarget.Path = "/home"; Query = Some "foo=bar"}
         Assert.OkEqual(expected, Message.tryGetRequestTarget input)
 
-module Host =
-
-    [<Fact>]
-    let ``succesfully gets valid host from headers`` () =
-        let headers = [("Host", "www.example.com:80")]
-        let expected = "www.example.com:80" |> Host |> Some
-        Assert.OkEqual(expected, Message.tryGetHost headers)
-
-    [<Fact>]
-    let ``succesfully gets valid empty host from headers`` () =
-        let headers = [("Host", "")]
-        let expected = None
-        Assert.OkEqual(expected, Message.tryGetHost headers)
-
-    [<Fact>]
-    let ``error for no Host header`` () =
-        let headers = Seq.empty
-        Assert.IsError(Message.tryGetHost headers)
-
-    [<Fact>]
-    let ``error for multiple Host headers`` () =
-        let headers = [
-            ("Host", "")
-            ("Host", "www.example.com")
-        ]
-        Assert.IsError(Message.tryGetHost headers)
-
-    [<Fact>]
-    let ``error for invalid formatting in Host header`` () =
-        let headers = [("Host", "www.exam^^^ple.com")]
-        Assert.IsError(Message.tryGetHost headers)
-
 module EffectiveRequestUri =
 
     [<Fact>]
@@ -77,7 +45,7 @@ module EffectiveRequestUri =
     let ``creates correct URI from authority target`` () =
         let target = RequestTarget.Authority "www.website.com"
         let expected = UriBuilder("http", "www.website.com").Uri
-        Assert.Equal(expected, Message.getEffectiveRequestUri None false None "www.blah.com" (Some (Host "www.blah.com")) 80 target)
+        Assert.Equal(expected, Message.getEffectiveRequestUri None false None "www.blah.com" (Some (Header.Host "www.blah.com")) 80 target)
 
     [<Fact>]
     let ``creates correct URI from origin target`` () =
@@ -90,7 +58,7 @@ module EffectiveRequestUri =
         let target = RequestTarget.Asterisk
         let fixedAuthority = "www.website.com"
         let expected = UriBuilder("https", "www.website.com").Uri
-        Assert.Equal(expected, Message.getEffectiveRequestUri (Some "https") false (Some fixedAuthority) "www.blah.com" (Some (Host "www.blah.com:80")) 80 target)
+        Assert.Equal(expected, Message.getEffectiveRequestUri (Some "https") false (Some fixedAuthority) "www.blah.com" (Some (Header.Host "www.blah.com:80")) 80 target)
 
     [<Fact>]
     let ``creates correct URI from default authority`` () =
@@ -101,7 +69,7 @@ module EffectiveRequestUri =
     [<Fact>]
     let ``creates correct URI from asterisk target using Host header`` () =
         let target = RequestTarget.Asterisk
-        let host = Host "www.website.com:80"
+        let host = Header.Host "www.website.com:80"
         let expected = UriBuilder("http", "www.website.com", 80).Uri
         Assert.Equal(expected, Message.getEffectiveRequestUri (Some "http") false None "www.blah.com" (Some host) 80 target)
 
@@ -122,7 +90,11 @@ module RequestMessage =
                     Target = "http://www.example.com:80"
                     HttpVersion = { HttpVersion.MajorVersion = 1; MinorVersion = 1 }
                 }
-            Dto.Message.Headers = [("Host", "www.example.com")]
+            Dto.Message.Headers =
+                [
+                    ("Host", "www.example.com")
+                    ("Connection", "close")
+                ]
             Dto.Message.RequestMessage.Body = None
         }
         let serverConfig =
@@ -132,9 +104,10 @@ module RequestMessage =
                 FixedAuthority = None
             }
         let expected = {
-            RequestMessage.Host = Some (Host "www.example.com")
+            RequestMessage.Host = Some (Header.Host "www.example.com")
             RequestTarget = RequestTarget.Absolute "http://www.example.com:80"
             EffectiveRequestUri = UriBuilder("http", "www.example.com", 80).Uri
+            Connection = Some Header.Connection.Close
         }
         let result = Message.RequestMessage.TryOfDto serverConfig false 80 dto
         Assert.OkEqual(expected, result)

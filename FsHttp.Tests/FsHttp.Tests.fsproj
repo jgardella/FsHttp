@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="Helpers.fs" />
     <Compile Include="Types\Dto\Message.fs" />
+    <Compile Include="Types\Header.fs" />
     <Compile Include="Types\Message.fs" />
   </ItemGroup>
   <ItemGroup>

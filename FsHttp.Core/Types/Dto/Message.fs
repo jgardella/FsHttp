@@ -69,8 +69,6 @@ type RequestBody =
     | InvalidContentLength
 
 module private Headers =
-    let private pws : Parser<char> =
-        anyOf [' '; '\t']
 
     let private pvchar : Parser<char> =
         satisfy (fun c -> int c >= 0x21 && int c <= 0x7e)
@@ -80,9 +78,6 @@ module private Headers =
 
     let private pobsfold : Parser<string> =
         newline >>. many1Chars pws
-
-    let private ptoken =
-        many1Chars ptchar
 
     let private pfieldvchar : Parser<char> =
         pvchar <|> pobstext
@@ -96,9 +91,6 @@ module private Headers =
     let private pfieldvalue : Parser<string> =
         manyStrings pfieldcontent //<|> pobsfold
 
-    let private pows : Parser<string> =
-        manyChars pws
-
     let pheaderfield : Parser<string * string> =
         (ptoken .>> pchar ':') .>>. (pows >>. pfieldvalue .>> pows)
 
@@ -106,11 +98,11 @@ let pbody (headers : seq<string * string>) =
     let contentLength =
         headers
         |> Seq.toList
-        |> List.where (fst >> (=) "Content-Length") |> List.map snd
+        |> List.where (fst >> (=?) "Content-Length") |> List.map snd
     let transferEncoding =
         headers
         |> Seq.toArray
-        |> Seq.where (fst >> (=) "Transfer-Encoding")
+        |> Seq.where (fst >> (=?) "Transfer-Encoding")
         |> Seq.collect (fun (_, s) -> s.Split(','))
         |> Seq.toList
     match (transferEncoding, contentLength) with

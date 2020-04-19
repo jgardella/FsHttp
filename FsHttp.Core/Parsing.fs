@@ -149,3 +149,13 @@ let ptchar : Parser<char> =
         digit
         asciiLetter
     ]
+
+let ptoken =
+    many1Chars ptchar
+
+let pws : Parser<char> =
+    anyOf [' '; '\t']
+
+let pows : Parser<string> =
+    manyChars pws
+

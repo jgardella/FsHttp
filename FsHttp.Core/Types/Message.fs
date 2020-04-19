@@ -1,8 +1,8 @@
 module FsHttp.Core.Types.Message
 
 open System
-open FParsec
 open FsHttp.Core.Types
+open FsHttp.Core.Types.Dto.Message
 
 type ServerConfig = {
     FixedScheme : string option
@@ -12,20 +12,6 @@ type ServerConfig = {
 
 type RequestError =
     | BadRequest of string
-
-/// Tries to get exactly one header with the provided header.
-let internal tryExactlyOneHeader (targetHeader : string) (headers : seq<string * string>) =
-    headers
-    |> Seq.where (fst >> ((=) targetHeader))
-    |> Seq.tryExactlyOne
-    |> Option.map snd
-
-/// There must be exactly one 'Host' header with a properly formatted value.
-/// See <see href="https://tools.ietf.org/html/rfc7230#section-5.4">RFC 7230 Section 5.4</see>.
-let internal tryGetHost (headers : seq<string * string>) =
-    tryExactlyOneHeader "Host" headers
-    |> Result.ofOptionf "Expect exactly one 'Host' header."
-    |> Result.bind (FParsec.runWithError Host.Parser "Invalid format for 'Host' header")
 
 /// Request target must be properly formatted.
 let internal tryGetRequestTarget (target : string) =
@@ -38,7 +24,8 @@ let internal isDefaultPortForScheme (scheme : string) (tcpPort : int) =
     | _ -> false
 
 /// Builds the effective request URI from the provided request information
-let internal getEffectiveRequestUri (fixedScheme : string option) (isSecureConnection : bool) (fixedAuthority : string option) (defaultAuthority : string) (host : Host option) (tcpPort : int) (requestTarget : RequestTarget) =
+/// See <see href="https://tools.ietf.org/html/rfc7230#section-5.5">RFC 7230 Section 5.5</see>.
+let internal getEffectiveRequestUri (fixedScheme : string option) (isSecureConnection : bool) (fixedAuthority : string option) (defaultAuthority : string) (host : Header.Host option) (tcpPort : int) (requestTarget : RequestTarget) =
     let scheme =
         fixedScheme
         |> Option.defaultValue (if isSecureConnection then "https" else "http")
@@ -53,7 +40,7 @@ let internal getEffectiveRequestUri (fixedScheme : string option) (isSecureConne
         let authority =
             fixedAuthority
             |> Option.orElse authority
-            |> Option.orElse (host |> Option.map (fun (Host host) -> host))
+            |> Option.orElse (host |> Option.map (fun (Header.Host host) -> host))
             |> Option.defaultValue defaultAuthority
         let query =
             query
@@ -73,20 +60,23 @@ let internal getEffectiveRequestUri (fixedScheme : string option) (isSecureConne
 
 /// An HTTP Request message which has been fully validated.
 type RequestMessage = {
-    Host : Host option
+    Host : Header.Host option
     RequestTarget : RequestTarget
     EffectiveRequestUri : Uri
+    Connection : Header.Connection option
 } with
     /// Tries to create a request message from a DTO.
     /// Returns Error if the request described by the DTO is not valid.
     static member TryOfDto (serverConfig : ServerConfig) (isSecureConnection : bool) (tcpPort : int) (dto : Dto.Message.RequestMessage) = result {
-        let! host = tryGetHost dto.Headers
+        let! host = Header.tryGetHost dto.Headers
         let! requestTarget = tryGetRequestTarget dto.RequestLine.Target
         let effectiveRequestUri = getEffectiveRequestUri serverConfig.FixedScheme isSecureConnection serverConfig.FixedAuthority serverConfig.DefaultAuthority host tcpPort requestTarget
+        let! connection = Header.tryGetConnection dto.Headers
         return {
             RequestMessage.Host = host
             RequestTarget = requestTarget
             EffectiveRequestUri = effectiveRequestUri
+            Connection = connection
         }
     }
 

@@ -3,6 +3,8 @@ module Prelude
 
 open System
 
+let (=?) (s1 : string) (s2 : string) = s1.Equals(s2, StringComparison.InvariantCultureIgnoreCase)
+
 module Result =
 
     let ofOption error = function

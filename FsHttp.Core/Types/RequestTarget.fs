@@ -76,15 +76,6 @@ type OriginTarget = {
                 Query = query
             }
 
-type Host = Host of string
-with
-    static member Parser =
-        Parsing.phost >>? opt (pchar ':' >>? manyChars digit)
-        |>> ignore
-        |> skipped
-        |> attempt
-        |>> (fun s -> if s = "" then None else Some (Host s))
-
 /// The target resource upn which to apply the request.
 /// See <see href="https://tools.ietf.org/html/rfc7230#section-5.3">RFC7230 Section 5.3</see>.
 type RequestTarget =
