@@ -1,2 +1,4 @@
 FParsec
 FSharp.Core
+Serilog
+Serilog.Sinks.Console

@@ -57,7 +57,7 @@ abcdefghijklmnopqrstuvwxyz"""
                     ("Accept-Language", "en, mi")
                     ("Content-Length", "26")
                 ]
-            Body = Some (RequestBody.ParsedBody (Encoding.UTF8.GetBytes "abcdefghijklmnopqrstuvwxyz"))
+            Body = Some (Body.ParsedBody (Encoding.UTF8.GetBytes "abcdefghijklmnopqrstuvwxyz"))
         }
 
     Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)
@@ -86,7 +86,7 @@ abcdefghijklmnopqrstuvwxyz"""
                     ("Accept-Language", "en, mi")
                     ("Content-Length", "blah")
                 ]
-            Body = Some RequestBody.InvalidContentLength
+            Body = Some Body.InvalidContentLength
         }
 
     Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)
@@ -117,7 +117,7 @@ abcdefghijklmnopqrstuvwxyz"""
                     ("Content-Length", "26")
                     ("Content-Length", "27")
                 ]
-            Body = Some RequestBody.InvalidContentLength
+            Body = Some Body.InvalidContentLength
         }
 
     Assert.ParseSuccessEqual(expected, run RequestMessage.Parser input)

@@ -5,6 +5,12 @@ open System
 
 let (=?) (s1 : string) (s2 : string) = s1.Equals(s2, StringComparison.InvariantCultureIgnoreCase)
 
+module Option =
+
+    let iterAsync f = function
+        | Some x -> f x
+        | None -> async.Return ()
+
 module Result =
 
     let ofOption error = function

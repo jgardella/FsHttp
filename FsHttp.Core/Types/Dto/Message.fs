@@ -1,6 +1,7 @@
 module FsHttp.Core.Types.Dto.Message
 
 open System
+open System.Text
 open FParsec
 open FsHttp.Core.Parsing
 
@@ -61,9 +62,10 @@ type RequestLine = {
 type StatusLine = {
     StatusCode : int
     ReasonPhrase : string
+    HttpVersion : HttpVersion
 }
 
-type RequestBody =
+type Body =
     | ParsedBody of byte []
     | UnknownLength
     | InvalidContentLength
@@ -109,24 +111,24 @@ let pbody (headers : seq<string * string>) =
     | ([], []) ->
         preturn None
     | ([], contentLength) when contentLength.Length > 1 ->
-        preturn (Some RequestBody.InvalidContentLength)
+        preturn (Some Body.InvalidContentLength)
     | ([], [contentLength]) ->
         match Int32.TryParse contentLength with
         | (true, contentLength) ->
             parray contentLength anyChar
-            |>> (Array.map byte >> RequestBody.ParsedBody >> Some)
-        | (false, _) -> preturn (Some RequestBody.InvalidContentLength)
+            |>> (Array.map byte >> Body.ParsedBody >> Some)
+        | (false, _) -> preturn (Some Body.InvalidContentLength)
     | (transferEncoding, _) when transferEncoding |> List.tryLast = Some "chunked" ->
         // Read until transfer coding indicates the data is complete.
         fail "Transfer-Encoding not supported."
     | (_, _) ->
         // Transfer encoding which doesn't end in 'chunked', cannot determine length.
-        preturn (Some RequestBody.UnknownLength)
+        preturn (Some Body.UnknownLength)
 
 type RequestMessage = {
     RequestLine : RequestLine
     Headers : seq<string * string>
-    Body : RequestBody option
+    Body : Body option
 } with
     static member Parser =
         RequestLine.Parser .>>. (many (Headers.pheaderfield .>> newline)) .>> newline
@@ -137,3 +139,19 @@ type RequestMessage = {
                 Headers = headers
                 Body = body
             })
+
+type ResponseMessage = {
+    StatusLine : StatusLine
+    Headers : seq<string * string>
+    Body : byte [] option
+} with
+    static member Bytes (response : ResponseMessage) =
+        let httpVersion = sprintf "HTTP/%d.%d" response.StatusLine.HttpVersion.MajorVersion response.StatusLine.HttpVersion.MinorVersion
+        let headers = response.Headers |> Seq.map (fun (header, field) -> sprintf "%s: %s\r\n" header field) |> String.concat ""
+        let messageWithHeaders =
+            sprintf "%s %d %s\r\n%s\r\n"
+                httpVersion
+                response.StatusLine.StatusCode
+                response.StatusLine.ReasonPhrase
+                headers
+        Array.append (Option.defaultValue [||] response.Body) (Encoding.UTF8.GetBytes messageWithHeaders)
